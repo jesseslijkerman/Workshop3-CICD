@@ -28,9 +28,9 @@ build:
 deploy:
   stage: deploy
   script:
-    - mkdir -p ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
+    # - mkdir -p ~/.ssh
+    # - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    # - chmod 600 ~/.ssh/id_rsa
     - ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_SERVER "
         docker pull $REGISTRY/$IMAGE_NAME:$IMAGE_TAG &&
         docker stop $IMAGE_NAME || true &&
