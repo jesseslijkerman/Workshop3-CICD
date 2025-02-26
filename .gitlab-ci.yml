@@ -5,7 +5,7 @@ stages:
   - deploy
 
 variables:
-  IMAGE_NAME: "workshop-3-prod"
+  IMAGE_NAME: "workshop-3-prod" 
   IMAGE_TAG: "latest"
   REGISTRY: "gitlab.fdmci.hva.nl:5050/se-specialization-2024-2/tse1/jesse-slijkerman/workshop-3-cicd"
   DEPLOY_SERVER: "your-server-ip"
