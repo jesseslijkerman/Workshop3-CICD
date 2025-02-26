@@ -22,6 +22,8 @@ build:
     - docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
   only:
     - main
+  tags:
+    - hva
 
 deploy:
   stage: deploy
@@ -40,3 +42,5 @@ deploy:
   environment:
     name: production
     url: https://your-deployed-app.com
+  tags:
+    - hva  
