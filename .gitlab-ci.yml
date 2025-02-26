@@ -5,9 +5,9 @@ stages:
   - deploy
 
 variables:
-  IMAGE_NAME: "your-docker-image-name"
+  IMAGE_NAME: "workshop-3-prod"
   IMAGE_TAG: "latest"
-  REGISTRY: "registry.gitlab.com/your-namespace/your-project"
+  REGISTRY: "gitlab.fdmci.hva.nl:5050/se-specialization-2024-2/tse1/jesse-slijkerman/workshop-3-cicd"
   DEPLOY_SERVER: "your-server-ip"
   DEPLOY_USER: "your-user"
   DEPLOY_PATH: "/var/www/your-app"
