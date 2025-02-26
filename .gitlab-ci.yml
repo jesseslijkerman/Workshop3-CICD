@@ -1,49 +1,46 @@
-# This file is a template, and might need editing before it works on your project.
-# This is a sample GitLab CI/CD configuration file that should run without any modifications.
-# It demonstrates a basic 3 stage CI/CD pipeline. Instead of real tests or scripts,
-# it uses echo commands to simulate the pipeline execution.
-#
-# A pipeline is composed of independent jobs that run scripts, grouped into stages.
-# Stages run in sequential order, but jobs within stages run in parallel.
-#
-# For more information, see: https://docs.gitlab.com/ee/ci/yaml/#stages
-#
-# You can copy and paste this template into a new `.gitlab-ci.yml` file.
-# You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
-#
-# To contribute improvements to CI/CD templates, please follow the Development guide at:
-# https://docs.gitlab.com/ee/development/cicd/templates.html
-# This specific template is located at:
-# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
+image: docker:latest
 
-stages:          # List of stages for jobs, and their order of execution
+stages:
   - build
-  - test
   - deploy
 
-build-job:       # This job runs in the build stage, which runs first.
+variables:
+  IMAGE_NAME: "workshop-3-prod" 
+  IMAGE_TAG: "latest"
+  REGISTRY: "gitlab.fdmci.hva.nl:5050/se-specialization-2024-2/tse1/jesse-slijkerman/workshop-3-cicd"
+  DEPLOY_SERVER: "your-server-ip"
+  DEPLOY_USER: "your-user"
+  DEPLOY_PATH: "/var/www/your-app"
+
+before_script:
+  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $REGISTRY 
+
+build:
   stage: build
   script:
-    - echo "Compiling the code..."
-    - echo "Compile complete."
+    - docker build -t $REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+    - docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+  only:
+    - main
+  tags:
+    - hva
 
-unit-test-job:   # This job runs in the test stage.
-  stage: test    # It only starts when the job in the build stage completes successfully.
+deploy:
+  stage: deploy
   script:
-    - echo "Running unit tests... This will take about 60 seconds."
-    - sleep 60
-    - echo "Code coverage is 90%"
-
-lint-test-job:   # This job also runs in the test stage.
-  stage: test    # It can run at the same time as unit-test-job (in parallel).
-  script:
-    - echo "Linting code... This will take about 10 seconds."
-    - sleep 10
-    - echo "No lint issues found."
-
-deploy-job:      # This job runs in the deploy stage.
-  stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
-  environment: production
-  script:
-    - echo "Deploying application..."
-    - echo "Application successfully deployed."
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_SERVER "
+        docker pull $REGISTRY/$IMAGE_NAME:$IMAGE_TAG &&
+        docker stop $IMAGE_NAME || true &&
+        docker rm $IMAGE_NAME || true &&
+        docker run -d --name $IMAGE_NAME -p 80:80 $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+      "
+  only:
+    - main
+  environment:
+    name: production
+    url: https://your-deployed-app.com
+  tags:
+    - hva  
