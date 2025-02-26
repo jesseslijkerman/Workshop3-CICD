@@ -35,7 +35,7 @@ deploy:
         docker pull $REGISTRY/$IMAGE_NAME:$IMAGE_TAG &&
         docker stop $IMAGE_NAME || true &&
         docker rm $IMAGE_NAME || true &&
-        docker run -d --name $IMAGE_NAME -p 80:80 $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+        docker run -d --name $IMAGE_NAME -p 8009:8009 $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
       "
   only:
     - main
