@@ -39,7 +39,7 @@ deploy:
         docker run -d --name $IMAGE_NAME -p 8009:8009 $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
       "
   only:
-    - main 
+    - main
   environment:
     name: production
     url: https://your-deployed-app.com
