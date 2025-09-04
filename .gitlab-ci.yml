@@ -40,8 +40,8 @@ dockerize:
   tags:
     - hva
   image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
   before_script:
     - apk add --no-cache python3 py3-pip
     - pip3 install awscli
