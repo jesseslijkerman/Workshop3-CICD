@@ -1,44 +1,47 @@
+image: docker:20.10.16
+
 stages:
   - build
+  - test
+  - dockerize
   - deploy
 
 variables:
-  IMAGE_NAME: "workshop-3-prod"
+  IMAGE_NAME: "workshop-3-prod" 
+  REGISTRY: "gitlab.fdmci.hva.nl:5050/se-specialization-2024-2/tse1/jesse-slijkerman/workshop-3-cicd"
   IMAGE_TAG: $CI_COMMIT_SHORT_SHA
-  AWS_REGION: "eu-north-1"
-  ECR_REGISTRY: "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
-  IMAGE_URI: "$ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
+  AWS_REGION: eu-north-1
+  ECR_REPOSITORY: react-app
+  ECR_REGISTRY: 168544657306.dkr.ecr.eu-north-1.amazonaws.com/react-app
+  IMAGE_URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-# Build with Kaniko
+before_script:
+  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $REGISTRY  
+
+# 1. Build & push Docker image to AWS ECR
 build:
   stage: build
-  image:
-    name: gcr.io/kaniko-project/executor:latest
-    entrypoint: [""]
   script:
-    # Authenticate with ECR
-    - echo "{\"credHelpers\":{\"$ECR_REGISTRY\":\"ecr-login\"}}" > /kaniko/.docker/config.json
-    # Build & push
-    - /kaniko/executor --dockerfile $CI_PROJECT_DIR/Dockerfile --context $CI_PROJECT_DIR --destination $IMAGE_URI
+    - docker build -t $REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+    - docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
   only:
     - main
   tags:
     - hva
 
-# Deploy to ECS
+
+# 2. Deploy to ECS
 deploy:
   stage: deploy
+  tags:
+    - hva
   image: amazon/aws-cli:2.15.0
   script:
     - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
     - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
     - aws configure set default.region $AWS_REGION
-    # Update ECS service to new image
-    - aws ecs update-service --cluster my-cluster --service my-service --force-new-deployment
-  only:
-    - main
-  environment:
-    name: production
-    url: https://your-app.aws-region.elb.amazonaws.com
-  tags:
-    - hva
+    - echo "Updating ECS service..."
+    - aws ecs update-service \
+        --cluster react-cluster1 \
+        --service react-service \
+        --force-new-deployment
