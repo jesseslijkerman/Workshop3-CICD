@@ -5,58 +5,27 @@ stages:
   - deploy
 
 variables:
+  IMAGE_NAME: "workshop-3-prod" 
+  REGISTRY: "gitlab.fdmci.hva.nl:5050/se-specialization-2024-2/tse1/jesse-slijkerman/workshop-3-cicd"
   IMAGE_TAG: $CI_COMMIT_SHORT_SHA
   AWS_REGION: eu-north-1
   ECR_REPOSITORY: react-app
   ECR_REGISTRY: 168544657306.dkr.ecr.eu-north-1.amazonaws.com/react-app
   IMAGE_URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-# 1. Build React app
+# 1. Build & push Docker image to AWS ECR
 build:
   stage: build
+  script:
+    - docker build -t $REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+    - docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+  only:
+    - main
   tags:
     - hva
-  image: node:20
-  script:
-    - npm ci
-    - npm run build
-  artifacts:
-    paths:
-      - build
 
-# 2. Run tests
-test:
-  stage: test
-  tags:
-    - hva
-  image: node:20
-  script:
-    - npm ci
-    - npm test -- --ci --watchAll=false
 
-# 3. Build & push Docker image to AWS ECR
-dockerize:
-  stage: dockerize
-  tags:
-    - hva
-  image: docker:20.10.16
-  variables:
-    DOCKER_HOST: unix:///var/run/docker.sock
-  before_script:
-    - apk add --no-cache python3 py3-pip
-    - pip3 install awscli
-  script:
-    - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-    - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-    - aws configure set default.region $AWS_REGION
-    - echo "Logging into AWS ECR..."
-    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
-    - echo "Building Docker image..."
-    - docker build -t $IMAGE_URI .
-    - echo "Pushing Docker image..."
-    - docker push $IMAGE_URI
-
-# 4. Deploy to ECS
+# 2. Deploy to ECS
 deploy:
   stage: deploy
   tags:
