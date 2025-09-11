@@ -1,44 +1,44 @@
+image: amazon/aws-cli:2.15.0
+
 stages:
   - build
   - deploy
 
 variables:
-  IMAGE_NAME: "workshop-3-prod"
   IMAGE_TAG: $CI_COMMIT_SHORT_SHA
   AWS_REGION: eu-north-1
   ECR_REPOSITORY: react-app
-  ECR_REGISTRY: 168544657306.dkr.ecr.eu-north-1.amazonaws.com
-  IMAGE_URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-  CODEBUILD_PROJECT: react-app-build # create this in AWS CodeBuild
+  CODEBUILD_PROJECT: react-app-build
+  ECS_CLUSTER: react-cluster1
+  ECS_SERVICE: react-service
 
-# 1. Trigger AWS CodeBuild to build the image
+before_script:
+  - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+  - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+  - aws configure set default.region $AWS_REGION
+
+# 1. Trigger AWS CodeBuild to build and push the Docker image
 build:
   stage: build
-  image: amazon/aws-cli:2.15.0
   tags:
     - hva
   script:
-    - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-    - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-    - aws configure set default.region $AWS_REGION
     - echo "Starting AWS CodeBuild project..."
     - aws codebuild start-build --project-name $CODEBUILD_PROJECT \
-        --environment-variables-override name=IMAGE_TAG,value=$IMAGE_TAG,type=PLAINTEXT \
-        name=ECR_REPOSITORY,value=$ECR_REPOSITORY,type=PLAINTEXT
-    - echo "Build triggered. Wait for it to complete before deploying."
+        --environment-variables-override name=IMAGE_TAG,value=$IMAGE_TAG,type=PLAINTEXT
+  only:
+    - main
 
-# 2. Deploy to ECS
+# 2. Deploy the new image to ECS
 deploy:
   stage: deploy
-  image: amazon/aws-cli:2.15.0
   tags:
     - hva
   script:
-    - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-    - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-    - aws configure set default.region $AWS_REGION
-    - echo "Updating ECS service..."
+    - echo "Updating ECS service to use the new image..."
     - aws ecs update-service \
-        --cluster react-cluster1 \
-        --service react-service \
+        --cluster $ECS_CLUSTER \
+        --service $ECS_SERVICE \
         --force-new-deployment
+  only:
+    - main
