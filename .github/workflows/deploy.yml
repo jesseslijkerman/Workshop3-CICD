@@ -2,10 +2,32 @@ name: Deploy React App to ECS
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - "main"
+      - "dev"
 
 jobs:
+  # 1. Test Phase
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test -- --watchAll=false
+
+  # 2. Deploy Phase
   deploy:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
@@ -28,25 +50,26 @@ jobs:
 
       # 4. Build & push Docker image to ECR
       - name: Build, tag, and push image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: react-app
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          # Build image with SHA tag
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-
-          # Tag image as latest as well
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-
-          # Push both tags
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          env:
+            ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+            ECR_REPOSITORY: react-app
+            IMAGE_TAG: ${{ github.sha }}
+          run: |
+            docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+            docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
       # 5. Deploy to ECS
       - name: Deploy to ECS
-        run: |
-          aws ecs update-service \
-            --cluster react-cluster1 \
-            --service react-service \
-            --force-new-deployment
+          run: |
+            if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+              SERVICE_NAME="react-service-prod"
+            else
+              SERVICE_NAME="react-service-dev"
+            fi
+
+            aws ecs update-service \
+              --cluster react-cluster1 \
+              --service $SERVICE_NAME \
+              --force-new-deployment
